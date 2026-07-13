@@ -1,0 +1,176 @@
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import QtQuick.Shapes
+import QtWebView
+
+Rectangle {
+	id: oauth2Screen
+	anchors.left: parent.left
+	anchors.right: parent.right
+	anchors.bottom: parent.bottom
+	height: visible ? root.height * 0.9 : 0;
+	color: "yellow"
+	radius: 12
+	border.color: "blue"
+	border.width: 1
+	visible: root.oauth2Display
+
+	property alias loader_webView_alias: loader_webView
+
+	property bool fullShown: root.oauth2Display && oauth2Screen.height === root.height * 0.9
+	onFullShownChanged: fullShown ? fullShownTimer.restart() : loader_webView.active = false
+
+	property bool webviewLoading: true
+
+	Timer {
+		id: fullShownTimer
+		running: false
+		repeat: false
+		interval: 50
+		triggeredOnStart: false
+		onTriggered: loader_webView.active = true
+	}
+
+	MouseArea { anchors.fill: parent }
+	Behavior on height { NumberAnimation { duration: 250 } }
+
+	ColumnLayout {
+		anchors.fill: parent
+		spacing: 0
+
+		// HEADER
+		Item {
+			Layout.fillWidth: true
+			Layout.preferredHeight: 50
+
+			RowLayout {
+				id: header_oauth2screen
+				anchors.top: parent.top
+				anchors.left: parent.left;		anchors.leftMargin: 20
+				anchors.right: parent.right;	anchors.rightMargin: 20
+				anchors.bottom: parent.bottom
+				spacing: 0
+
+				Text {
+					Layout.fillWidth: true
+					Layout.fillHeight: true
+					verticalAlignment: Text.AlignVCenter
+					text: "Přihlášení"
+				}
+
+				Item { Layout.fillWidth: true; Layout.fillHeight: true }
+
+				Item {
+					Layout.preferredWidth: height
+					Layout.fillHeight: true
+
+					Shape {
+						id: circle
+						anchors.centerIn: parent
+						width: parent.width * 0.65
+						height: width
+						visible: closeTimer.running
+
+						ShapePath {
+							id: circlePath
+							strokeColor: "red"
+							strokeWidth: 4
+							fillColor: "transparent"
+							startX: circle.width / 2
+							startY: circle.height / 2
+
+							PathAngleArc {
+								id: circlePathArc
+								centerX: circlePath.startX
+								centerY: circlePath.startY
+								radiusX: circle.width / 2
+								radiusY: circle.height / 2
+								startAngle: -90
+								sweepAngle: 0
+								Behavior on sweepAngle { NumberAnimation { duration: closeTimer.interval } }
+							}
+						}
+					}
+					Text {
+						anchors.centerIn: parent
+						text: "✖"
+					}
+					MouseArea {
+						anchors.fill: parent
+						onClicked: root.oauth2Display = false
+					}
+				}
+			}
+		}
+		// HEADER
+
+		// CONTENT
+		Rectangle {
+			Layout.fillWidth: true
+			Layout.fillHeight: true
+			color: "white"
+
+			Loader {
+				id: loader_webView; objectName: "loader_webView"
+				anchors.fill: parent
+				sourceComponent: component_webView
+				active: false
+				asynchronous: true
+
+				property string service: ""
+
+				property string url: ""
+				onUrlChanged: if (url) { root.oauth2Display = true; }
+							  else { root.oauth2Display = false; }
+
+				function closeWebview() { circlePathArc.sweepAngle = 360; closeTimer.restart(); }
+				Timer {
+					id: closeTimer
+					interval: 2500
+					running: false
+					repeat: false
+					triggeredOnStart: false
+					onTriggered: {
+						circlePathArc.sweepAngle = 0;
+						root.oauth2Display = false;
+					}
+				}
+			}
+		}
+
+		Component {
+			id: component_webView
+
+			WebView {
+				id: webView; objectName: "oauth2content"
+				width: loader_webView.width
+				height: loader_webView.height
+
+				httpUserAgent: "Mozilla/5.0 (Windows NT 6.2; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/6.8.0 Chrome/122.0.6261.171 Safari/537.36"
+				//httpUserAgent: "QtOAuth/1.0 (+https://www.qt.io)"
+
+				onLoadingChanged: oauth2Screen.webviewLoading = loading
+
+				onUrlChanged: {
+					//console.log(url.toString());
+					var urlObj = new URL(url);
+					loader_webView.url = decodeURI(urlObj.toString());
+
+
+					if (url.toString().startsWith("http://localhost:5476/")) {
+						var myUrl = new URL(url);
+
+						if (myUrl.searchParams.has("code")) {
+							//savedData.code = myUrl.searchParams.get("code");
+							//appAPI.claim();
+							//console.log("code received:", savedData.code);
+						}
+					}
+				}
+
+				Component.onCompleted: { url = loader_webView.url; }
+			}
+		}
+	}
+}
