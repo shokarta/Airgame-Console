@@ -63,6 +63,7 @@ Window {
 		property var msalToken: ({})		// 1 hour expiration
 		property var xstsToken: ({})		// 4 days expiration
 		property var webToken: ({})			// 16 hours expiration
+		property var mpToken: ({})			// 16 hours expiration
 		property var gssvToken: ({})		// 16 hours expiration
 		property var xhomeToken: ({})		// 4 hours expiration
 		property var xcloudToken: ({})		// 4 hours expiration
@@ -73,7 +74,7 @@ Window {
 		property real videoVolume: 0.8
 	}
 
-property var deepLinkData: []
+
 	property var test_xmlhttp: new XMLHttpRequest()
 	Component.onCompleted: {
 		// root.test_xmlhttp.abort();						// cancel old call if any
@@ -90,6 +91,7 @@ property var deepLinkData: []
 		// root.test_xmlhttp.open("GET", url, true);
 		// //root.test_xmlhttp.responseType = "json";
 		// root.test_xmlhttp.send();
+		//loginAPI.refreshTokens();
 	}
 
 
@@ -120,6 +122,7 @@ property var deepLinkData: []
 			loginAPI.assignloginToken("msalToken", loginAPI.checkTokenExpiration(settingsData.msalToken["expires_in"], "msalToken"));
 			loginAPI.assignloginToken("xstsToken", loginAPI.checkTokenExpiration(settingsData.xstsToken["expires_in"], "xstsToken"));
 			loginAPI.assignloginToken("webToken", loginAPI.checkTokenExpiration(settingsData.webToken["expires_in"], "webToken"));
+			loginAPI.assignloginToken("mpToken", loginAPI.checkTokenExpiration(settingsData.mpToken["expires_in"], "mpToken"));
 			loginAPI.assignloginToken("gssvToken", loginAPI.checkTokenExpiration(settingsData.gssvToken["expires_in"], "gssvToken"));
 			loginAPI.assignloginToken("xhomeToken", loginAPI.checkTokenExpiration(settingsData.xhomeToken["expires_in"], "xhomeToken"));
 			loginAPI.assignloginToken("xcloudToken", loginAPI.checkTokenExpiration(settingsData.xcloudToken["expires_in"], "xcloudToken"));
@@ -177,6 +180,7 @@ property var deepLinkData: []
 	property var getMsalToken_xmlhttp: new XMLHttpRequest()
 	property var doXstsAuthentication_xmlhttp: new XMLHttpRequest()
 	property var getWebToken_xmlhttp: new XMLHttpRequest()
+	property var getMpToken_xmlhttp: new XMLHttpRequest()
 	property var getGssvToken_xmlhttp: new XMLHttpRequest()
 	property var getXhomeToken_xmlhttp: new XMLHttpRequest()
 	property var getXcloudToken_xmlhttp: new XMLHttpRequest()

@@ -256,6 +256,7 @@ Item {
 		ListElement { code: "userSessionGames";			name: "Jump back";				icon: "emoji_returnarrow.svg";				loaded: false }
 		ListElement { code: "allGames";					name: "All Games";				icon: "icon_whitecontroller.png";			loaded: false }
 		ListElement { code: "favoriteGames";			name: "Favorites";				icon: "emoji_heart.svg";					loaded: false }
+		ListElement { code: "ownedGames";				name: "Owned Games";			icon: "icon_whitecheckmark.png";			loaded: false }
 		ListElement { code: "newGames";					name: "New Games";				icon: "emoji_smallstars.svg";				loaded: false }
 		ListElement { code: "dealGames";				name: "On Sale";				icon: "emoji_moneywings.svg";				loaded: false }
 		ListElement { code: "bestRatedGames";			name: "Best Rated";				icon: "emoji_star.svg";						loaded: false }
@@ -338,7 +339,7 @@ Item {
 
 		// property bool titleListSimpleFinished
 		onTitleListSimpleFinishedChanged: {
-			var codes = ["userSessionGames","allGames","favoriteGames","comingSoonGames","mostPlayedGames","previewGames"];
+			var codes = ["userSessionGames","allGames","favoriteGames","ownedGames","comingSoonGames","mostPlayedGames","previewGames"];
 			for (var i=0; i<modelItem.menuModel.count; i++) { if (codes.includes(modelItem.menuModel.get(i).code)) { modelItem.menuModel.setProperty(i, "loaded", titleListSimpleFinished); } }
 		}
 

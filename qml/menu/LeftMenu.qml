@@ -223,6 +223,16 @@ Rectangle {
 			mainMenu.children[0].children[0].resetView();
 			modelItem.filteredGameList.refreshAsync();
 		}
+		else if (clickCode === "ownedGames") {
+			mainMenu.changeMainMenu("mainMenuList");
+			modelItem.filteredGameList.code = "ownedGames";
+			modelItem.filteredGameList.sortingField = "productTitle";
+			modelItem.filteredGameList.orderType = Qt.AscendingOrder;
+			modelItem.categoryList.reset();
+			topMenu.queryString.clear();
+			mainMenu.children[0].children[0].resetView();
+			modelItem.filteredGameList.refreshAsync();
+		}
 		else if (clickCode === "newGames") {
 			mainMenu.changeMainMenu("mainMenuList");
 			modelItem.filteredGameList.code = "newGames";

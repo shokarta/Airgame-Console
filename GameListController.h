@@ -97,7 +97,8 @@ class GameListModelFull : public QAbstractListModel
             AddedEAPlayRole,
             AddedUbisoftPlusRole,
             LastTimePlayedRole,
-            IsFavouritedRole
+            IsFavoritedRole,
+            IsOwnedRole
         };
         Q_ENUM(Roles)
 
@@ -159,7 +160,8 @@ class GameListModelFull : public QAbstractListModel
                 case AddedEAPlayRole:                           return row["addedEAPlay"];
                 case AddedUbisoftPlusRole:                      return row["addedUbisoftPlus"];
                 case LastTimePlayedRole:                        return row["lastTimePlayed"];
-                case IsFavouritedRole:                          return row["isFavourited"];
+                case IsFavoritedRole:                           return row["isFavorited"];
+                case IsOwnedRole:                               return row["isOwned"];
             }
             return {};
         }
@@ -212,7 +214,8 @@ class GameListModelFull : public QAbstractListModel
                 roles[AddedEAPlayRole] = "addedEAPlay";
                 roles[AddedUbisoftPlusRole] = "addedUbisoftPlus";
                 roles[LastTimePlayedRole] = "lastTimePlayed";
-                roles[IsFavouritedRole] = "isFavourited";
+                roles[IsFavoritedRole] = "isFavorited";
+                roles[IsOwnedRole] = "isOwned";
             return roles;
         }
 
@@ -353,7 +356,8 @@ class GameListModelFull : public QAbstractListModel
 
                         fullItem["userPrograms"] = QVariantList();
                         if (updateItem.contains("lastTimePlayed"))  { fullItem["lastTimePlayed"] = updateItem.value("lastTimePlayed");  changedRoles.append(LastTimePlayedRole); }
-                        if (updateItem.contains("isFavourited"))    { fullItem["isFavourited"] = updateItem.value("isFavourited");      changedRoles.append(IsFavouritedRole); }
+                        if (updateItem.contains("isFavorited"))     { fullItem["isFavorited"] = updateItem.value("isFavorited");        changedRoles.append(IsFavoritedRole); }
+                        if (updateItem.contains("isOwned"))         { fullItem["isOwned"] = updateItem.value("isOwned");                changedRoles.append(IsOwnedRole); }
 
                         m_gameListModelFull[j] = fullItem;    // save updated row back into m_gameListModelFull
 
@@ -382,7 +386,8 @@ class GameListModelFull : public QAbstractListModel
                     inputItem["storeId"] = inputItem.value("storeId", "");
                     inputItem["userPrograms"] = inputItem.value("userPrograms", QVariantList());
                     inputItem["lastTimePlayed"] = inputItem.value("lastTimePlayed", QDateTime());
-                    inputItem["isFavourited"] = inputItem.value("isFavourited", false);
+                    inputItem["isFavorited"] = inputItem.value("isFavorited", false);
+                    inputItem["isOwned"] = inputItem.value("idOwned", false);
                 inputList[i] = inputItem;       // save back to inputList
 
                 temporaryOutput.append(inputItem["storeId"].toString());        // append to temporaryOutput
@@ -649,19 +654,9 @@ class GameListModelFull : public QAbstractListModel
 
                             // Screenshots
                             row["screenshots"] = extra.value("Screenshots", QVariantList{}).toList();
-if (storeId == "9P8LR42PTRGJ") {
-    QJsonArray jsonArray = QJsonArray::fromVariantList(extra.value("Screenshots").toList());
-    QJsonDocument doc(jsonArray);
-    //qDebug().noquote() << storeId << "screenshots:" << doc.toJson(QJsonDocument::Compact);
-}
 
                             // Trailers
                             row["trailers"] = extra.value("Trailers", QVariantList{}).toList();
-if (storeId == "9P8LR42PTRGJ") {
-    QJsonArray jsonArray = QJsonArray::fromVariantList(extra.value("Trailers").toList());
-    QJsonDocument doc(jsonArray);
-    //qDebug().noquote() << storeId << "trailers:" << doc.toJson(QJsonDocument::Compact);
-}
 
                             // Attributes
                             row["attributes"] = extra.value("Attributes", QVariantList{}).toList();
@@ -907,7 +902,7 @@ class GameListModelFiltered : public QSortFilterProxyModel
         Q_INVOKABLE void refreshAsync() {
             if (m_code == "") { qWarning() << "unknown code"; return; }
 
-            static QStringList allowedCodes = {"userSessionGames", "allGames", "favoriteGames", "newGames", "dealGames", "bestRatedGames", "comingSoonGames", "topFreeGames", "mostPlayedGames", "previewGames", "mouseAndKeyboardGames"};
+            static QStringList allowedCodes = {"userSessionGames", "allGames", "favoriteGames", "ownedGames", "newGames", "dealGames", "bestRatedGames", "comingSoonGames", "topFreeGames", "mostPlayedGames", "previewGames", "mouseAndKeyboardGames"};
             if (!allowedCodes.contains(m_code)) { qWarning() << "unconfigured code" << m_code; return; }
 
             AsyncResult sendResult;
@@ -916,8 +911,9 @@ class GameListModelFiltered : public QSortFilterProxyModel
             QStringList replyList = {};
                 if (m_code == "userSessionGames") { replyList = getLastplayedList(); }
                 else if (m_code == "allGames") {}
-                else if (m_code == "favoriteGames") { replyList = getFavouritedList(); }
-                else if (m_code == "newGames") { replyList = getXboxList("eab7757c-ff70-45af-bfa6-79d3cfb2bf81"); }
+                else if (m_code == "favoriteGames") { replyList = getFavoritedList(); }
+                else if (m_code == "ownedGames") { replyList = getOwnedList(); }
+                else if (m_code == "newGames") { replyList = getXboxList("06323672-b8c8-43cc-b0de-32d5a9834749"); }
                 else if (m_code == "dealGames") {}
                 else if (m_code == "bestRatedGames") {}
                 else if (m_code == "comingSoonGames") { replyList = getXboxList("095bda36-f5cd-43f2-9ee1-0a72f371fb96"); }
@@ -975,7 +971,22 @@ class GameListModelFiltered : public QSortFilterProxyModel
                         QVariantMap map = modelSnapshot.at(i).toMap();
 
                         // check if it belongs to the proper category accoridng to "code" to filter
-                        if (map["isFavourited"].toBool() == false) { accepted[i] = false; continue; }
+                        if (map["isFavorited"].toBool() == false) { accepted[i] = false; continue; }
+                        //if (!sendResult.replyList.contains(map["storeId"].toString(), Qt::CaseInsensitive)) { accepted[i] = false; continue; }
+
+                        // check if Query Strings check passes
+                        if (filterQueryString(map["productTitle"].toString()) == false) { accepted[i] = false; continue; }
+
+                        // check if Playable Games check passes
+                        if (filterPlayableGames(map["userPrograms"].toStringList()) == false) { accepted[i] = false; continue; }
+                    }
+                }
+                else if (m_code == "ownedGames") {
+                    for (int i=0; i < modelSnapshot.size(); i++) {
+                        QVariantMap map = modelSnapshot.at(i).toMap();
+
+                        // check if it belongs to the proper category accoridng to "code" to filter
+                        if (map["isOwned"].toBool() == false) { accepted[i] = false; continue; }
                         //if (!sendResult.replyList.contains(map["storeId"].toString(), Qt::CaseInsensitive)) { accepted[i] = false; continue; }
 
                         // check if Query Strings check passes
@@ -1249,7 +1260,7 @@ class GameListModelFiltered : public QSortFilterProxyModel
             QJsonParseError jsonError;
             QJsonDocument replyDocument = QJsonDocument::fromJson(serverReply, &jsonError);
             if (jsonError.error != QJsonParseError::NoError) {
-                qWarning() << "JSON parse failed in getFavouritedList():" << jsonError.errorString();
+                qWarning() << "JSON parse failed in getXboxList(" << listId << "):" << jsonError.errorString();
                 //qWarning() << "Raw reply:" << serverReply;
                 return {};
             }
@@ -1378,7 +1389,7 @@ class GameListModelFiltered : public QSortFilterProxyModel
            return returnList;
         }
 
-        QStringList getFavouritedList() {
+        QStringList getFavoritedList() {
 
             QString xid = settings.value("xid").toString();
             QString uhs = settings.value("webToken").toMap()["DisplayClaims"].toMap()["xui"].toList()[0].toMap()["uhs"].toString();
@@ -1390,7 +1401,7 @@ class GameListModelFiltered : public QSortFilterProxyModel
                 req.setRawHeader("x-xbl-contract-version", "2");
                 if (settings.value("preferredforceIp").toString() != "") { req.setRawHeader("X-Forwarded-For", settings.value("preferredforceIp").toByteArray()); }
             QNetworkAccessManager *manager = new QNetworkAccessManager();
-                manager->get(req);
+                // manager->get(req);       // why doubled?
 
             QEventLoop loop;
             QNetworkReply *reply = manager->get(req);
@@ -1405,7 +1416,7 @@ class GameListModelFiltered : public QSortFilterProxyModel
             QJsonParseError jsonError;
             QJsonDocument replyDocument = QJsonDocument::fromJson(serverReply, &jsonError);
             if (jsonError.error != QJsonParseError::NoError) {
-                qWarning() << "JSON parse failed in getFavouritedList():" << jsonError.errorString();
+                qWarning() << "JSON parse failed in getFavoritedList():" << jsonError.errorString();
                 //qWarning() << "Raw reply:" << serverReply;
                 return {};
             }
@@ -1432,12 +1443,12 @@ class GameListModelFiltered : public QSortFilterProxyModel
                 QVariantMap item = entry.value("Item").toMap();
 
                 QString productId = item.value("itemId").toString().toUpper();
-                bool isFavourited = true;
+                bool isFavorited = true;
 
                 // Create output object
                 QVariantMap outputItem;
                     outputItem["storeId"] = productId;
-                    outputItem["isFavourited"] = isFavourited;
+                    outputItem["isFavorited"] = isFavorited;
 
                 // append to returnList
                 returnList.append(productId);
@@ -1446,6 +1457,100 @@ class GameListModelFiltered : public QSortFilterProxyModel
                 if (fullModelData.contains(productId)) { listToUpdate.append(outputItem); }
                 else { listToAdd.append(outputItem); }
             }
+
+            fullModel->setUpdateList(listToUpdate);
+            fullModel->setTemporaryList(listToAdd);
+
+            return returnList;
+        }
+
+        QStringList getOwnedList() {
+
+            QString uhs = settings.value("mpToken").toMap()["DisplayClaims"].toMap()["xui"].toList()[0].toMap()["uhs"].toString();
+            QString token = settings.value("mpToken").toMap().value("token").toString();
+
+            // Separate additional StoreId(s)
+            auto *fullModel = qobject_cast<GameListModelFull*>(sourceModel());
+            if (!fullModel) { qWarning() << "fullModel not reachable when calling"; return {}; }
+            QStringList storeIdList = fullModel->storeIdList(); // copy
+            QSet<QString> fullModelData = QSet<QString>(storeIdList.begin(), storeIdList.end());       // Convert the big list to a set for fast lookup
+
+            // return variables
+            QVariantList listToUpdate;
+            QVariantList listToAdd;
+            QStringList returnList;
+
+            bool firstPass = true;
+            QJsonObject continuationToken = {};
+
+            do {
+
+                // POST DATA
+                QJsonObject postDataObject;
+                    postDataObject.insert("maxPageSize", QJsonValue::fromVariant(200));
+                    postDataObject.insert("excludeDuplicated", QJsonValue::fromVariant(true));
+                    postDataObject.insert("expandSatisfyingItems", QJsonValue::fromVariant(true));
+                    postDataObject.insert("market", QJsonValue::fromVariant("neutral"));
+                    postDataObject.insert("entitlementFilters", QJsonArray{"*:Game"});
+                    if (!continuationToken.isEmpty()) { postDataObject.insert("continuationToken", continuationToken); }       // continuationToken is actialy aoo json object
+                QByteArray postData = QJsonDocument(postDataObject).toJson(QJsonDocument::Compact);
+
+                QNetworkRequest req;
+                    req.setUrl(QUrl("https://collections.mp.microsoft.com/v8.0/collections/b2bLicensePreview"));
+                    req.setRawHeader("Authorization", "XBL3.0 x=" + uhs.toUtf8() + ";" + token.toUtf8());
+                    req.setRawHeader("Content-Type", "application/json; charset=utf-8");
+                    req.setRawHeader("Host", "collections.mp.microsoft.com");
+                    req.setRawHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 Edg/150.0.0.0");
+                    if (settings.value("preferredforceIp").toString() != "") { req.setRawHeader("X-Forwarded-For", settings.value("preferredforceIp").toByteArray()); }
+                QNetworkAccessManager *manager = new QNetworkAccessManager();
+
+                QEventLoop loop;
+                QNetworkReply *reply = manager->post(req, postData);
+
+                QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);        // When reply finishes, quit the loop
+                loop.exec();                // BLOCK HERE until finished
+
+                // REPLY RECEIVED
+                QByteArray serverReply = reply->readAll();
+                reply->deleteLater();
+
+                QJsonParseError jsonError;
+                QJsonDocument replyDocument = QJsonDocument::fromJson(serverReply, &jsonError);
+                if (jsonError.error != QJsonParseError::NoError) {
+                    qWarning() << "JSON parse failed in getOwnedList():" << jsonError.errorString();
+                    //qWarning() << "Raw reply:" << serverReply;
+                    return {};
+                }
+
+                // Ensure it's an object and convert to QVariantMap
+                QJsonObject root = replyDocument.object();
+                QJsonArray items = root.value("items").toArray();
+
+                // list of all storeId from serverReply
+                for (int i=0; i<items.size(); i++) {
+                    QJsonObject item = items.at(i).toObject();
+
+                    QString productId = item.value("productId").toString().toUpper();
+                    bool isOwned = true;
+
+                    // Create output object
+                    QVariantMap outputItem;
+                        outputItem["storeId"] = productId;
+                        outputItem["isOwned"] = isOwned;
+
+                    // append to returnList
+                    returnList.append(productId);
+
+                    if (fullModelData.contains(productId)) { listToUpdate.append(outputItem); }
+                    else { listToAdd.append(outputItem); }
+                }
+
+                // Continuation Token
+                firstPass = false;
+                if (root.contains("continuationToken")) { continuationToken = root.value("continuationToken").toObject(); }
+                else { continuationToken = {}; }
+
+            } while (firstPass || !continuationToken.isEmpty());
 
             fullModel->setUpdateList(listToUpdate);
             fullModel->setTemporaryList(listToAdd);

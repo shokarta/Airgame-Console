@@ -4,7 +4,7 @@ QtObject {
 	id: titleAPI
 
 
-	// probably only one list "PINS" exist which might be the games i make star/favourite?
+	// probably only one list "PINS" exist which might be the games i make star/favorite?
 	function getEpList() {
 		root.getEpList_xmlhttp.abort();						// cancel old call if any
 		root.getEpList_xmlhttp = new XMLHttpRequest();		// clear old data

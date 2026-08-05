@@ -19,6 +19,9 @@ Item {
 		var webTokenExpiration = settingsData.webToken["expires_in"];
 		console.log("webToken expires", Qt.formatDateTime(webTokenExpiration, "d.M.yyyy hh:mm:ss"), "which is in:", funcAPI.formatDurationCompactSigned(webTokenExpiration - now));
 
+		var mpTokenExpiration = settingsData.mpToken["expires_in"];
+		console.log("mpToken expires", Qt.formatDateTime(mpTokenExpiration, "d.M.yyyy hh:mm:ss"), "which is in:", funcAPI.formatDurationCompactSigned(mpTokenExpiration - now));
+
 		var gssvTokenExpiration = settingsData.gssvToken["expires_in"];
 		console.log("gssvToken expires", Qt.formatDateTime(gssvTokenExpiration, "d.M.yyyy hh:mm:ss"), "which is in:", funcAPI.formatDurationCompactSigned(gssvTokenExpiration - now));
 
@@ -306,6 +309,7 @@ Item {
 				assignloginToken("xstsToken", true);
 
 				getWebToken();
+				getMpToken();
 				getGssvToken();
 			}
 		}
@@ -387,6 +391,62 @@ Item {
 
 		root.getWebToken_xmlhttp.responseType = "json";
 		root.getWebToken_xmlhttp.send(JSON.stringify(payload));
+	}
+	function getMpToken() {
+		root.getMpToken_xmlhttp.abort();						// cancel old call if any
+		root.getMpToken_xmlhttp = new XMLHttpRequest();		// clear old data
+
+		var url = "https://xsts.auth.xboxlive.com/xsts/authorize";
+
+		// when responce received then do the following script:
+		root.getMpToken_xmlhttp.onload = function() {
+
+			// Error Handler
+			let reply;
+			try { reply = root.getMpToken_xmlhttp.response; }
+			catch (exception) { console.log("error occured on getMpToken_xmlhttp:", exception); return; }
+
+			if (reply["error"]) {
+				// if (reply["error"] === "authorization_pending")			{ }		// do nothing, timer will check again
+				// else if (reply["error"] === "authorization_declined")	{ doPollForDeviceCodeAuthTimer.stop(); doDeviceCodeAuth(); }	// user rejected, start over
+				// else if (reply["error"] === "bad_verification_code")	{ doPollForDeviceCodeAuthTimer.stop(); doDeviceCodeAuth(); }	// bad device_code, start over
+				// else if (reply["error"] === "expired_token")			{ doPollForDeviceCodeAuthTimer.stop(); doDeviceCodeAuth(); }	// token expired, start over
+				// else if (reply["error"] === "invalid_grant")			{ doPollForDeviceCodeAuthTimer.stop(); }	// process finished // TODO: check if process is finished
+				console.log("unexpected error in getMpToken_xmlhttp():", JSON.stringify(reply));
+			}
+			else {
+				var tempObject = new Object;
+				tempObject["token"] = reply["Token"];
+				tempObject["expires_in"] = funcAPI.parseIsoUtcToDate(reply["NotAfter"]);
+				tempObject["DisplayClaims"] = reply["DisplayClaims"];
+				settingsData.mpToken = tempObject;
+				assignloginToken("mpToken", true);
+
+				settingsData.xid = reply["DisplayClaims"]["xui"][0]["xid"];
+			}
+		}
+
+		root.getMpToken_xmlhttp.open("POST", url, true);
+			root.getMpToken_xmlhttp.setRequestHeader('x-xbl-contract-version', '1');
+			root.getMpToken_xmlhttp.setRequestHeader('Cache-Control', 'no-cache');
+			root.getMpToken_xmlhttp.setRequestHeader('Content-Type', 'application/json');
+			root.getMpToken_xmlhttp.setRequestHeader('Origin', 'https://www.xbox.com');
+			root.getMpToken_xmlhttp.setRequestHeader('Referer', 'https://www.xbox.com');
+			root.getMpToken_xmlhttp.setRequestHeader('Accept', '*/*');
+			root.getMpToken_xmlhttp.setRequestHeader('ms-cv', '0');
+			root.getMpToken_xmlhttp.setRequestHeader('User-Agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36');
+			if (settingsData.preferredforceIp !== "") { root.getMpToken_xmlhttp.setRequestHeader('X-Forwarded-For', settingsData.preferredforceIp); }
+
+		var properties = Object();
+			properties.SandboxId = 'RETAIL';
+			properties.UserTokens = [settingsData.xstsToken["token"]];
+		var payload = Object();
+			payload.Properties = properties;
+			payload.RelyingParty = 'http://mp.microsoft.com/';
+			payload.TokenType = 'JWT';
+
+		root.getMpToken_xmlhttp.responseType = "json";
+		root.getMpToken_xmlhttp.send(JSON.stringify(payload));
 	}
 	function getGssvToken() {
 		root.getGssvToken_xmlhttp.abort();						// cancel old call if any
